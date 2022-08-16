@@ -48,6 +48,7 @@ inputs:
 
   env-file:
     description: 'The template file to use for .env.'
+    default: '.env.example'
     required: false
 
 outputs:
@@ -64,7 +65,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: 'Setup PHP'
+    - name: 'Setup Composer'
       uses: Sander0542/setup-composer@main
       id: composer
       with:
@@ -91,7 +92,7 @@ runs:
         cache: ${{ inputs.node-cache }}
         cache-dependency-path: ${{ inputs.node-cache-dependency-path }}
 
-    - name: 'Copy .env'
+    - name: 'Copy ${{ inputs.env-file }} to .env'
       if: ${{ inputs.env-file }}
       shell: bash
       run: php -r "file_exists('.env') || copy('${{ inputs.env-file }}', '.env');"
