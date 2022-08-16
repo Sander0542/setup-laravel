@@ -105,7 +105,3 @@ runs:
       shell: bash
       run: npm ci
 
-    - name: 'Build npm'
-      if: ${{ inputs.node-version }}
-      shell: bash
-      run: npm run build
