@@ -1,0 +1,111 @@
+name: 'Setup Laravel'
+description: 'Setup Composer with caching'
+
+inputs:
+  php-version:
+    description: 'Setup PHP version.'
+    required: false
+  php-extensions:
+    description: 'Setup PHP extensions.'
+    required: false
+  php-ini-file:
+    description: 'Set base ini file.'
+    default: 'production'
+    required: false
+  php-ini-values:
+    description: 'Add values to php.ini.'
+    required: false
+  php-coverage:
+    description: 'Setup code coverage driver.'
+    required: false
+  php-tools:
+    description: 'Setup popular tools globally.'
+    required: false
+
+  node-always-auth:
+    description: 'Set always-auth in npmrc.'
+    default: 'false'
+  node-version:
+    description: 'Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0.'
+  node-version-file:
+    description: 'File containing the version Spec of the version to use.  Examples: .nvmrc, .node-version, .tool-versions.'
+  node-architecture:
+    description: 'Target architecture for Node to use. Examples: x86, x64. Will use system architecture by default.'
+  node-check-latest:
+    description: 'Set this option if you want the action to check for the latest available version that satisfies the version spec.'
+    default: false
+  node-registry-url:
+    description: 'Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN.'
+  node-scope:
+    description: 'Optional scope for authenticating against scoped registries. Will fall back to the repository owner when using the GitHub Packages registry (https://npm.pkg.github.com/).'
+  node-token:
+    description: Used to pull node distributions from node-versions.  Since there's a default, this is typically not supplied by the user.
+    default: ${{ github.token }}
+  node-cache:
+    description: 'Used to specify a package manager for caching in the default directory. Supported values: npm, yarn, pnpm.'
+  node-cache-dependency-path:
+    description: 'Used to specify the path to a dependency file: package-lock.json, yarn.lock, etc. Supports wildcards or a list of file names for caching multiple dependencies.'
+
+  env-file:
+    description: 'The template file to use for .env.'
+    required: false
+
+outputs:
+  php-version:
+    description: 'PHP version in semver format'
+    value: ${{ steps.composer.outputs.php-version }}
+  composer-dir:
+    description: 'Directory to the composer cache'
+    value: ${{ steps.composer.outputs.composer-dir }}
+  node-version:
+    description: 'The installed node version'
+    value: ${{ steps.node.outputs.php-version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: 'Setup PHP'
+      uses: Sander0542/setup-composer@main
+      id: composer
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: ${{ inputs.php-extensions }}
+        ini-file: ${{ inputs.php-ini-file }}
+        ini-values: ${{ inputs.php-ini-values }}
+        coverage: ${{ inputs.php-coverage }}
+        tools: ${{ inputs.php-tools }}
+
+    - name: 'Setup Node'
+      if: ${{ inputs.node-version }}
+      id: node
+      uses: actions/setup-node@v3
+      with:
+        always-auth: ${{ inputs.node-always-auth }}
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version-file }}
+        architecture: ${{ inputs.node-architecture }}
+        check-latest: ${{ inputs.node-check-latest }}
+        registry-url: ${{ inputs.node-registry-url }}
+        scope: ${{ inputs.node-scope }}
+        token: ${{ inputs.node-token }}
+        cache: ${{ inputs.node-cache }}
+        cache-dependency-path: ${{ inputs.node-cache-dependency-path }}
+
+    - name: 'Copy .env'
+      if: ${{ inputs.env-file }}
+      shell: bash
+      run: php -r "file_exists('.env') || copy('${{ inputs.env-file }}', '.env');"
+
+    - name: 'Install composer dependencies'
+      shell: bash
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: 'Install npm dependencies'
+      if: ${{ inputs.node-version }}
+      shell: bash
+      run: npm ci
+
+    - name: 'Build npm'
+      if: ${{ inputs.node-version }}
+      shell: bash
+      run: npm run build
